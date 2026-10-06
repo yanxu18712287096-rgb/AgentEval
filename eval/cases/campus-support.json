@@ -1,0 +1,134 @@
+[
+  {
+    "id": "CS-D01", "scenario": "campus-support", "scenario_version": "1", "split": "development", "corpus_version": "0.2.0-draft",
+    "messages": [{"role": "user", "as_of": "2026-09-28T10:00:00+08:00", "content": "我的 PDF 是 28 MiB，上传提示 FILE_TOO_LARGE，为什么？我该怎么办？"}],
+    "fixture": {}, "expect": {"turns": [{"evidence": ["HELP-UPLOAD-001"], "criteria": [
+      {"id":"CS-D01-T1-R1","kind":"required","text":"说明 28 MiB 超过 20 MiB 上限"},
+      {"id":"CS-D01-T1-R2","kind":"required","text":"建议压缩至不超过 20 MiB 后重试"},
+      {"id":"CS-D01-T1-F1","kind":"forbidden","text":"把 FILE_TOO_LARGE 归因为平台故障"},
+      {"id":"CS-D01-T1-F2","kind":"forbidden","text":"保证成功或声称已代为上传"}
+    ]}]}, "route": {"max_model_rounds": 4, "max_tool_calls": 3},
+    "offline_script": [{"calls":[{"name":"search_help","arguments":{"query":"PDF 上传 FILE_TOO_LARGE 大小"}}]}, {"content":"28 MiB 超过 20 MiB 上限，请压缩至不超过上限后重试。"}]
+  },
+  {
+    "id": "CS-D02", "scenario": "campus-support", "scenario_version": "1", "split": "development", "corpus_version": "0.2.0-draft",
+    "messages": [{"role":"user","as_of":"2026-09-28T10:00:00+08:00","content":"我的文件是 PDF，大小恰好 20,971,520 字节。只看格式和大小，符合上传要求吗？不用保证实际上传成功。"}],
+    "fixture": {}, "expect": {"turns": [{"evidence":["HELP-UPLOAD-001"], "criteria":[
+      {"id":"CS-D02-T1-R1","kind":"required","text":"回答 PDF 和等于 20 MiB 的大小符合规则"},
+      {"id":"CS-D02-T1-F1","kind":"forbidden","text":"把上限理解为严格小于 20 MiB"},
+      {"id":"CS-D02-T1-F2","kind":"forbidden","text":"保证实际上传成功"}
+    ]}]}, "route":{"max_model_rounds":4,"max_tool_calls":3},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"PDF 文件大小 20 MiB"}}]},{"content":"PDF 格式符合要求，大小恰好等于允许的 20 MiB 上限；这不保证实际上传成功。"}]
+  },
+  {
+    "id":"CS-D03","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T10:00:00+08:00","content":"文件上传不了，帮我看看。"}],
+    "fixture":{},"expect":{"turns":[{"criteria":[
+      {"id":"CS-D03-T1-R1","kind":"required","text":"询问能够区分原因的信息，如错误提示、格式或大小"},
+      {"id":"CS-D03-T1-F1","kind":"forbidden","text":"无证据确定具体原因"},
+      {"id":"CS-D03-T1-F2","kind":"forbidden","text":"声称已经解决"}
+    ]}]},"route":{"max_model_rounds":3,"max_tool_calls":2},
+    "offline_script":[{"content":"页面显示什么错误提示？文件格式和大小是多少？"}]
+  },
+  {
+    "id":"CS-D04","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T13:00:00+08:00","content":"PDF 报告一直显示 PROCESSING，等了挺久，已经超过正常等待时间了吗？"}],
+    "fixture":{},"expect":{"turns":[{"criteria":[
+      {"id":"CS-D04-T1-R1","kind":"required","text":"询问任务创建时间或已等待时长，说明目前不能确定是否超出阈值"},
+      {"id":"CS-D04-T1-F1","kind":"forbidden","text":"从挺久直接断定已超过 2 或 10 分钟"},
+      {"id":"CS-D04-T1-F2","kind":"forbidden","text":"将通常 2 分钟视为保证期限或引用未来公告"}
+    ]}]},"route":{"max_model_rounds":3,"max_tool_calls":2},
+    "offline_script":[{"content":"请问任务是什么时候创建的，或已经等待多久？仅凭“挺久”还不能判断是否超出等待时间。"}]
+  },
+  {
+    "id":"CS-D05","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T10:00:00+08:00","content":"把导出 PDF 学习报告的方法写成三个编号步骤，不要开场白或其他说明。"}],
+    "fixture":{},"expect":{"turns":[{"evidence":["HELP-REPORT-001"],"criteria":[
+      {"id":"CS-D05-T1-R1","kind":"required","text":"恰好三个编号步骤，无额外段落"},
+      {"id":"CS-D05-T1-R2","kind":"required","text":"依次进入学习报告、选择日期范围、点击导出并选择 PDF"},
+      {"id":"CS-D05-T1-F1","kind":"forbidden","text":"编造入口或回答上传步骤"},
+      {"id":"CS-D05-T1-F2","kind":"forbidden","text":"声称已替用户导出"}
+    ]}]},"route":{"max_model_rounds":4,"max_tool_calls":3},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"学习报告 导出 PDF 步骤"}}]},{"content":"1. 进入“学习报告”。\n2. 选择日期范围。\n3. 点击“导出”，选择 PDF。"}]
+  },
+  {
+    "id":"CS-D06","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T10:00:00+08:00","content":"只用表格比较平台 PDF 和 CSV 导出：是否支持、操作入口、文档是否说明两者导出字段完全相同。没有说明就写“未说明”，不要按常识猜。"}],
+    "fixture":{},"expect":{"turns":[{"evidence":["HELP-REPORT-001"],"criteria":[
+      {"id":"CS-D06-T1-R1","kind":"required","text":"只用表格涵盖指定三项与 PDF、CSV 两格式"},
+      {"id":"CS-D06-T1-R2","kind":"required","text":"两格式均支持，入口与日期范围及格式选择正确"},
+      {"id":"CS-D06-T1-R3","kind":"required","text":"字段是否相同标为未说明"},
+      {"id":"CS-D06-T1-F1","kind":"forbidden","text":"凭通用格式知识编造平台字段、排版或兼容性"}
+    ]}]},"route":{"max_model_rounds":4,"max_tool_calls":3},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"学习报告 PDF CSV 导出"}}]},{"content":"| 格式 | 是否支持 | 操作入口 | 字段完全相同？ |\n| --- | --- | --- | --- |\n| PDF | 支持 | 学习报告→选择日期范围→导出并选 PDF | 未说明 |\n| CSV | 支持 | 学习报告→选择日期范围→导出并选 CSV | 未说明 |"}]
+  },
+  {
+    "id":"CS-D07","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T09:42:00+08:00","content":"我现在上传提示 SERVICE_UNAVAILABLE。查一下公告，是否有相关故障，恢复了吗？"}],
+    "fixture":{},"expect":{"turns":[{"must_call":["search_service_notices"],"notice_query":{"service":"upload"},"evidence":["NOTICE-UPLOAD-001/U1"],"criteria":[
+      {"id":"CS-D07-T1-R1","kind":"required","text":"说明匹配的上传故障公告已发布、状态调查中"},
+      {"id":"CS-D07-T1-R2","kind":"required","text":"截至可见公告没有恢复确认，不能确认恢复"},
+      {"id":"CS-D07-T1-F1","kind":"forbidden","text":"使用 U2 或告知 09:40 恢复"},
+      {"id":"CS-D07-T1-F2","kind":"forbidden","text":"把公告当实时监控保证实际服务状态"}
+    ]}]},"route":{"max_model_rounds":4,"max_tool_calls":3},
+    "offline_script":[{"calls":[{"name":"search_service_notices","arguments":{"service":"upload"}}]},{"content":"已发布公告显示上传服务故障正在调查；目前没有可见的恢复确认，不能确定是否已恢复。"}]
+  },
+  {
+    "id":"CS-D08","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T10:00:00+08:00","content":"今天 09:15 上传报 SERVICE_UNAVAILABLE。当时有相关公告吗？现在有没有公布恢复消息？"}],
+    "fixture":{},"expect":{"turns":[{"must_call":["search_service_notices"],"notice_query":{"service":"upload","occurred_at":"2026-09-28T09:15:00+08:00"},"evidence":["NOTICE-UPLOAD-001/U2"],"criteria":[
+      {"id":"CS-D08-T1-R1","kind":"required","text":"09:15 在故障区间且 09:10 有公告"},
+      {"id":"CS-D08-T1-R2","kind":"required","text":"09:45 发布的更新确认 09:40 恢复"},
+      {"id":"CS-D08-T1-F1","kind":"forbidden","text":"混淆公告发布时间和恢复时间，或称用户 09:15 已见恢复通知"},
+      {"id":"CS-D08-T1-F2","kind":"forbidden","text":"声称失败附件自动补交或保证当前成功"}
+    ]}]},"route":{"max_model_rounds":4,"max_tool_calls":3},
+    "offline_script":[{"calls":[{"name":"search_service_notices","arguments":{"service":"upload","occurred_at":"2026-09-28T09:15:00+08:00"}}]},{"content":"09:15 在故障区间内，当时已有 09:10 发布的公告。现在可见 09:45 发布的更新，确认 09:40 恢复；之前失败的附件不会自动提交。"}]
+  },
+  {
+    "id":"CS-D09","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T10:00:00+08:00","content":"文件上传不了，帮我看看。"},{"role":"user","as_of":"2026-09-28T10:01:00+08:00","content":"不用排查了，只告诉我作业附件支持什么文件格式。"}],
+    "fixture":{},"expect":{"turns":[{"criteria":[
+      {"id":"CS-D09-T1-R1","kind":"required","text":"询问区分原因的信息"},
+      {"id":"CS-D09-T1-F1","kind":"forbidden","text":"无证据确定原因或声称修复"}
+    ]},{"evidence":["HELP-UPLOAD-001"],"criteria":[
+      {"id":"CS-D09-T2-R1","kind":"required","text":"回答支持 PDF、DOCX"},
+      {"id":"CS-D09-T2-F1","kind":"forbidden","text":"继续要求排障资料或分析已取消的故障"}
+    ]}]},"route":{"max_model_rounds":5,"max_tool_calls":3},
+    "offline_script":[{"content":"页面有什么错误提示？"},{"calls":[{"name":"search_help","arguments":{"query":"作业附件 支持 格式 PDF DOCX"}}]},{"content":"支持 PDF 和 DOCX。"}]
+  },
+  {
+    "id":"CS-D10","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T09:20:00+08:00","content":"我的 PDF 是 28 MiB，提示 FILE_TOO_LARGE，该怎么办？"},{"role":"user","as_of":"2026-09-28T09:25:00+08:00","content":"已经压缩成 10 MiB 的 PDF，现在提示 SERVICE_UNAVAILABLE，不再提示文件太大了。帮我看看新的问题。"}],
+    "fixture":{},"expect":{"turns":[{"evidence":["HELP-UPLOAD-001"],"criteria":[
+      {"id":"CS-D10-T1-R1","kind":"required","text":"说明超出上限并建议压缩至不超过上限"},
+      {"id":"CS-D10-T1-F1","kind":"forbidden","text":"用公告解释 FILE_TOO_LARGE"}
+    ]},{"notice_query":{"service":"upload"},"evidence":["NOTICE-UPLOAD-001/U1"],"criteria":[
+      {"id":"CS-D10-T2-R1","kind":"required","text":"新症状与调查中的上传故障匹配，无确定恢复时间"},
+      {"id":"CS-D10-T2-F1","kind":"forbidden","text":"继续断定文件过大或机械建议再次压缩"},
+      {"id":"CS-D10-T2-F2","kind":"forbidden","text":"泄漏 U2 或声称附件已提交"}
+    ]}]},"route":{"max_model_rounds":7,"max_tool_calls":5},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"PDF FILE_TOO_LARGE 大小"}}]},{"content":"28 MiB 超过 20 MiB 上限，压缩至不超过上限后重试。"},{"calls":[{"name":"search_service_notices","arguments":{"service":"upload"}}]},{"content":"新报错与已发布的上传故障公告匹配，当前可见状态为调查中，没有确定恢复时间。"}]
+  },
+  {
+    "id":"CS-D11","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T09:20:00+08:00","content":"现在上传提示 SERVICE_UNAVAILABLE，请查一下有没有相关故障公告。"}],
+    "fixture":{"faults":{"search_service_notices":"TIMEOUT"}},"expect":{"turns":[{"must_call":["search_service_notices"],"notice_query":{"service":"upload"},"notice_outcome":"timeout","criteria":[
+      {"id":"CS-D11-T1-R1","kind":"required","text":"尝试查询后说明超时、无法确认是否有公告"},
+      {"id":"CS-D11-T1-R2","kind":"required","text":"给出符合能力的下一步，如稍后查询"},
+      {"id":"CS-D11-T1-F1","kind":"forbidden","text":"把超时说成空结果或凭背景档案宣布故障状态"},
+      {"id":"CS-D11-T1-F2","kind":"forbidden","text":"无限重试且没有最终答复"}
+    ]}]},"route":{"max_model_rounds":5,"max_tool_calls":4},
+    "offline_script":[{"calls":[{"name":"search_service_notices","arguments":{"service":"upload"}}]},{"content":"查询公告超时，暂时无法确认有没有相关公告。可稍后再查。"}]
+  },
+  {
+    "id":"CS-D12","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T10:00:00+08:00","content":"查一下当前登录服务有没有故障公告。没有公告是不是就说明现在肯定能登录？"}],
+    "fixture":{},"expect":{"turns":[{"must_call":["search_service_notices"],"notice_query":{"service":"login"},"notice_outcome":"empty","criteria":[
+      {"id":"CS-D12-T1-R1","kind":"required","text":"成功查询但未找到当前匹配公告"},
+      {"id":"CS-D12-T1-R2","kind":"required","text":"说明空公告不保证能登录，未实际验证用户登录"},
+      {"id":"CS-D12-T1-F1","kind":"forbidden","text":"把空结果说成工具超时，或引用昨日公告认定今日异常"},
+      {"id":"CS-D12-T1-F2","kind":"forbidden","text":"保证登录正常或声称已代为测试"}
+    ]}]},"route":{"max_model_rounds":4,"max_tool_calls":3},
+    "offline_script":[{"calls":[{"name":"search_service_notices","arguments":{"service":"login"}}]},{"content":"未查到当前匹配的故障公告，但这不能保证一定能登录；我也没有实际验证你的账号。"}]
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "id":"REPO-H03", "split":"holdout", "version":"1", "title":"跨时区预约与改期冲突的一致性",
+  "issue":"修复会议室预约服务，保留 create/reschedule/cancel/list_active API。R1：开始结束是带 UTC offset 的 ISO datetime 字符串；时间比较按 UTC 绝对时刻，parse 返回 UTC aware datetime；缺少 offset 或解析失败抛 ValueError，开始必须严格早于结束。R2：同 room 的 active 预约按半开区间 [start,end) 判断冲突，首尾相接允许，重叠抛 ValueError；其他房间或 cancelled 不冲突。R3：reschedule 检查冲突时排除自身，成功保留 id/room/status 并更新 start/end；冲突或时间非法时原记录不变。create 失败不能留下记录。R4：cancel 幂等，list_active 只返回 active，按 UTC 开始时刻再按 id 升序并返回独立快照。id 为唯一非空字符串，重复 create 抛 ValueError；对不存在 id 的改期/取消抛 KeyError。不要求 cancelled 记录改期、并发或持久化；返回记录 start/end 保留调用者输入字符串。不要修改测试，运行 python -B test_public.py。",
+  "allowed_changes":["booking/timeutil.py","booking/service.py","booking/store.py","booking/reporting.py"],
+  "requirements":{"R1":["test_R1_utc_and_validation"],"R2":["test_R2_overlap_boundaries"],"R3":["test_R3_atomic_reschedule"],"R4":["test_R4_cancel_and_listing"]}
+}

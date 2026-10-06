@@ -1,0 +1,6 @@
+{
+  "id":"REPO-D02", "split":"development", "version":"1", "title":"分层配置与请求参数传递",
+  "issue":"修复客户端配置链路：有时用户显式关闭重试或关闭缓存没有生效。保持现有 resolve(defaults,file_config,env,cli) 与 build_request API。R1：优先级 defaults < file_config < env < cli，只有缺失键表示未提供；False、0、空字符串均为显式值。env 只读取 APP_RETRIES、APP_CACHE、APP_LABEL，未知环境变量忽略；其他层为类型正确的部分字典，defaults 完整。R2：APP_RETRIES 必须为仅含 ASCII 0-9 的非空字符串，不接受符号、空白或其他数字字符；APP_CACHE 只接受不区分大小写的 true/false，不去除空白，错误值抛 ValueError；APP_LABEL 保留原文。R3：resolve 不修改任何输入；返回 Config，build_request 必须原样传播 retries/cache/label，不能在调用方再次用真假判断补默认值。R4：现有无覆盖默认行为与客户端 URL 保持不变。无需处理 None、额外字典字段、负的其他层重试值或网络请求。测试不可修改，运行 python -B test_public.py。",
+  "allowed_changes":["client/config.py","client/request.py"],
+  "requirements":{"R1":["test_R1_precedence"],"R2":["test_R2_env_validation"],"R3":["test_R3_caller_and_immutability"],"R4":["test_R4_defaults"]}
+}

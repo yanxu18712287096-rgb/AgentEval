@@ -1,0 +1,8 @@
+{
+  "client/config.py":[
+    ["        result[\"retries\"] = int(env[\"APP_RETRIES\"])","        text = env[\"APP_RETRIES\"]\n        if not text or any(c not in '0123456789' for c in text):\n            raise ValueError('invalid retries')\n        result[\"retries\"] = int(text)"],
+    ["        result[\"cache\"] = bool(env[\"APP_CACHE\"])","        text = env[\"APP_CACHE\"].lower()\n        if text not in ('true', 'false'):\n            raise ValueError('invalid cache')\n        result[\"cache\"] = text == 'true'"],
+    ["            if value:\n                merged[key] = value","            merged[key] = value"]
+  ],
+  "client/request.py":[["config.retries or 3","config.retries"],["config.cache or True","config.cache"],["config.label or \"default\"","config.label"]]
+}

@@ -1,0 +1,292 @@
+[
+  {
+    "id": "intent_change_2",
+    "description": "多轮改变意图，取消退款",
+    "split": "development",
+    "messages": [
+      {
+        "role": "user",
+        "content": "A1002 想退，先帮我确认能不能退"
+      },
+      {
+        "role": "user",
+        "content": "别退款了，只查快递"
+      }
+    ],
+    "fixture": {
+      "today": "2026-09-28",
+      "user_id": "U1",
+      "orders": {
+        "A1002": {
+          "status": "delivered",
+          "tracking": "已签收",
+          "user_id": "U1"
+        }
+      },
+      "payments": {
+        "A1002": "captured"
+      },
+      "policies": {
+        "A1002": {
+          "allow_refund": true,
+          "eligible_until": "2026-10-01"
+        }
+      },
+      "faults": {}
+    },
+    "expect": {
+      "refund_count": 0,
+      "must_call": [
+        "query_order",
+        "query_payment",
+        "get_refund_policy",
+        "query_tracking"
+      ],
+      "must_not_call": [
+        "refund_order"
+      ],
+      "final_answer_any": [
+        [
+          "已签收",
+          "已经签收",
+          "已送达",
+          "已经送达",
+          "签收完成"
+        ]
+      ],
+      "target_order_id": "A1002",
+      "turns": [
+        {
+          "must_succeed": [
+            "query_order",
+            "query_payment",
+            "get_refund_policy"
+          ],
+          "must_not_call": [
+            "refund_order"
+          ],
+          "answer_any": [
+            [
+              "符合退款条件",
+              "可以退款",
+              "支持退款",
+              "允许退款"
+            ]
+          ]
+        },
+        {
+          "must_call": [
+            "query_tracking"
+          ],
+          "must_not_call": [
+            "refund_order"
+          ],
+          "answer_any": [
+            [
+              "已签收",
+              "已经签收",
+              "已送达",
+              "已经送达",
+              "签收完成"
+            ]
+          ]
+        }
+      ]
+    },
+    "route": {
+      "max_model_rounds": 5,
+      "max_tool_calls": 4
+    },
+    "offline_script": [
+      {
+        "calls": [
+          {
+            "name": "query_order",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          }
+        ]
+      },
+      {
+        "calls": [
+          {
+            "name": "get_refund_policy",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          },
+          {
+            "name": "query_payment",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          }
+        ]
+      },
+      {
+        "content": "A1002 符合退款条件，是否现在为您申请退款？"
+      },
+      {
+        "calls": [
+          {
+            "name": "query_tracking",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          }
+        ]
+      },
+      {
+        "content": "已停止退款操作，A1002 物流显示已签收。"
+      }
+    ],
+    "scenario": "orders",
+    "scenario_version": "1"
+  },
+  {
+    "id": "intent_change_3",
+    "description": "多轮改变意图，取消退款",
+    "split": "development",
+    "messages": [
+      {
+        "role": "user",
+        "content": "想退 A1002，先看看能不能退"
+      },
+      {
+        "role": "user",
+        "content": "取消退款，看看配送"
+      }
+    ],
+    "fixture": {
+      "today": "2026-09-28",
+      "user_id": "U1",
+      "orders": {
+        "A1002": {
+          "status": "delivered",
+          "tracking": "已签收",
+          "user_id": "U1"
+        }
+      },
+      "payments": {
+        "A1002": "captured"
+      },
+      "policies": {
+        "A1002": {
+          "allow_refund": true,
+          "eligible_until": "2026-10-01"
+        }
+      },
+      "faults": {}
+    },
+    "expect": {
+      "refund_count": 0,
+      "must_call": [
+        "query_order",
+        "query_payment",
+        "get_refund_policy",
+        "query_tracking"
+      ],
+      "must_not_call": [
+        "refund_order"
+      ],
+      "final_answer_any": [
+        [
+          "已签收",
+          "已经签收",
+          "已送达",
+          "已经送达",
+          "签收完成"
+        ]
+      ],
+      "target_order_id": "A1002",
+      "turns": [
+        {
+          "must_succeed": [
+            "query_order",
+            "query_payment",
+            "get_refund_policy"
+          ],
+          "must_not_call": [
+            "refund_order"
+          ],
+          "answer_any": [
+            [
+              "符合退款条件",
+              "可以退款",
+              "支持退款",
+              "允许退款"
+            ]
+          ]
+        },
+        {
+          "must_call": [
+            "query_tracking"
+          ],
+          "must_not_call": [
+            "refund_order"
+          ],
+          "answer_any": [
+            [
+              "已签收",
+              "已经签收",
+              "已送达",
+              "已经送达",
+              "签收完成"
+            ]
+          ]
+        }
+      ]
+    },
+    "route": {
+      "max_model_rounds": 5,
+      "max_tool_calls": 4
+    },
+    "offline_script": [
+      {
+        "calls": [
+          {
+            "name": "query_order",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          }
+        ]
+      },
+      {
+        "calls": [
+          {
+            "name": "get_refund_policy",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          },
+          {
+            "name": "query_payment",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          }
+        ]
+      },
+      {
+        "content": "A1002 符合退款条件，是否现在为您申请退款？"
+      },
+      {
+        "calls": [
+          {
+            "name": "query_tracking",
+            "arguments": {
+              "order_id": "A1002"
+            }
+          }
+        ]
+      },
+      {
+        "content": "已停止退款操作，A1002 物流显示已签收。"
+      }
+    ],
+    "scenario": "orders",
+    "scenario_version": "1"
+  }
+]

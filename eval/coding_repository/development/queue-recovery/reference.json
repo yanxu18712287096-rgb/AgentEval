@@ -1,0 +1,11 @@
+{
+  "queueapp/store.py": [
+    ["job[\"status\"] = \"running\"", "job[\"status\"] = \"running\"\n        job[\"attempts\"] += 1"],
+    ["        job[\"attempts\"] += 1\n        job[\"lease_until\"] = None", "        job[\"lease_until\"] = None"]
+  ],
+  "queueapp/recovery.py": [
+    ["job[\"lease_until\"] < now", "job[\"lease_until\"] <= now"],
+    ["job[\"status\"] = \"pending\"", "job[\"status\"] = \"pending\" if job[\"attempts\"] < job[\"max_attempts\"] else \"failed\""],
+    ["    return count", "    store.save()\n    return count"]
+  ]
+}

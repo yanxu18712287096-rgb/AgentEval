@@ -1,0 +1,112 @@
+[
+  {
+    "id": "REPO-H03",
+    "split": "holdout",
+    "issue": "修复会议室预约服务，保留 create/reschedule/cancel/list_active API。R1：开始结束是带 UTC offset 的 ISO datetime 字符串；时间比较按 UTC 绝对时刻，parse 返回 UTC aware datetime；缺少 offset 或解析失败抛 ValueError，开始必须严格早于结束。R2：同 room 的 active 预约按半开区间 [start,end) 判断冲突，首尾相接允许，重叠抛 ValueError；其他房间或 cancelled 不冲突。R3：reschedule 检查冲突时排除自身，成功保留 id/room/status 并更新 start/end；冲突或时间非法时原记录不变。create 失败不能留下记录。R4：cancel 幂等，list_active 只返回 active，按 UTC 开始时刻再按 id 升序并返回独立快照。id 为唯一非空字符串，重复 create 抛 ValueError；对不存在 id 的改期/取消抛 KeyError。不要求 cancelled 记录改期、并发或持久化；返回记录 start/end 保留调用者输入字符串。不要修改测试，运行 python -B test_public.py。",
+    "fixture": {
+      "booking/__init__.py": "\"\"\"Single-process room scheduling.\"\"\"\n",
+      "booking/reporting.py": "from .timeutil import parse\n\n\ndef list_active(store):\n    rows = [row for row in store.all() if row[\"status\"] == \"active\"]\n    return sorted(rows, key=lambda row: (parse(row[\"start\"]), row[\"id\"]))\n",
+      "booking/service.py": "from .timeutil import bounds\nfrom .reporting import list_active\n\n\nclass BookingService:\n    def __init__(self, store):\n        self.store = store\n\n    def _check(self, candidate):\n        start, end = bounds(candidate[\"start\"], candidate[\"end\"])\n        for row in self.store.all():\n            if row[\"room\"] != candidate[\"room\"]:\n                continue\n            old_start, old_end = bounds(row[\"start\"], row[\"end\"])\n            if start <= old_end and old_start <= end:\n                raise ValueError(\"conflict\")\n\n    def create(self, booking_id, room, start, end):\n        if booking_id in self.store.rows:\n            raise ValueError(\"duplicate id\")\n        row = dict(id=booking_id, room=room, start=start, end=end, status=\"active\")\n        self._check(row)\n        self.store.put(row)\n        return self.store.get(booking_id)\n\n    def reschedule(self, booking_id, start, end):\n        row = self.store.get(booking_id)\n        row.update(start=start, end=end)\n        self.store.put(row)\n        self._check(row)\n        return self.store.get(booking_id)\n\n    def cancel(self, booking_id):\n        row = self.store.get(booking_id)\n        row[\"status\"] = \"cancelled\"\n        self.store.put(row)\n        return self.store.get(booking_id)\n\n    def list_active(self):\n        return list_active(self.store)\n",
+      "booking/store.py": "import copy\n\n\nclass Store:\n    def __init__(self):\n        self.rows = {}\n\n    def get(self, booking_id):\n        return copy.deepcopy(self.rows[booking_id])\n\n    def put(self, row):\n        self.rows[row[\"id\"]] = copy.deepcopy(row)\n\n    def all(self):\n        return copy.deepcopy(list(self.rows.values()))\n",
+      "booking/timeutil.py": "from datetime import datetime, timezone\n\n\ndef parse(value):\n    return datetime.fromisoformat(value).replace(tzinfo=None)\n\n\ndef bounds(start, end):\n    begin, finish = parse(start), parse(end)\n    if begin >= finish:\n        raise ValueError(\"empty or reversed interval\")\n    return begin, finish\n",
+      "test_public.py": "from booking.store import Store\nfrom booking.service import BookingService\n\nservice = BookingService(Store())\nservice.create(\"a\", \"room\", \"2026-01-01T09:00:00+00:00\", \"2026-01-01T10:00:00+00:00\")\nservice.create(\"b\", \"other\", \"2026-01-01T09:00:00+00:00\", \"2026-01-01T10:00:00+00:00\")\nassert [row[\"id\"] for row in service.list_active()] == [\"a\", \"b\"]\nassert service.cancel(\"a\")[\"status\"] == \"cancelled\"\nassert [row[\"id\"] for row in service.list_active()] == [\"b\"]\nprint(\"public booking checks passed\")\n",
+      "TASK.md": "修复会议室预约服务，保留 create/reschedule/cancel/list_active API。R1：开始结束是带 UTC offset 的 ISO datetime 字符串；时间比较按 UTC 绝对时刻，parse 返回 UTC aware datetime；缺少 offset 或解析失败抛 ValueError，开始必须严格早于结束。R2：同 room 的 active 预约按半开区间 [start,end) 判断冲突，首尾相接允许，重叠抛 ValueError；其他房间或 cancelled 不冲突。R3：reschedule 检查冲突时排除自身，成功保留 id/room/status 并更新 start/end；冲突或时间非法时原记录不变。create 失败不能留下记录。R4：cancel 幂等，list_active 只返回 active，按 UTC 开始时刻再按 id 升序并返回独立快照。id 为唯一非空字符串，重复 create 抛 ValueError；对不存在 id 的改期/取消抛 KeyError。不要求 cancelled 记录改期、并发或持久化；返回记录 start/end 保留调用者输入字符串。不要修改测试，运行 python -B test_public.py。\n"
+    },
+    "public_test": "test_public.py",
+    "hidden_test": "verifiers/REPO-H03.py",
+    "allowed_changes": [
+      "booking/timeutil.py",
+      "booking/service.py",
+      "booking/store.py",
+      "booking/reporting.py"
+    ],
+    "dataset_version": "repository-maintenance-v1",
+    "suite_hash": "4e8fa00dd1999fec4cd25b0caaf97620eb2da9246ea55c6b273c120801838c04",
+    "requirements": {
+      "R1": [
+        "test_R1_utc_and_validation"
+      ],
+      "R2": [
+        "test_R2_overlap_boundaries"
+      ],
+      "R3": [
+        "test_R3_atomic_reschedule"
+      ],
+      "R4": [
+        "test_R4_cancel_and_listing"
+      ]
+    }
+  },
+  {
+    "id": "REPO-H02",
+    "split": "holdout",
+    "issue": "修复文档读取服务：缓存命中后仍需执行授权，文档编辑后不能读到旧内容。保留 Repository/DocumentService API。R1：每次 read(actor,doc_id) 根据当前 owner/shared 授权，仅 owner 或 shared 中用户可读；未授权抛 PermissionError，不因缓存已有内容放行，撤销共享后立即生效。不存在的文档继续抛 KeyError。R2：Repository.update 每次成功更新把 revision 增加一（即使值相同），保留未指定字段；read 必须反映最新 title/body，返回 {id,title,body,revision}，不能含 owner/shared。R3：缓存可跨用户复用同一修订内容，但不能用它替代授权；输入数据及返回对象的修改不能污染仓库或缓存。R4：read_many 按传入 id 顺序逐个调用 read；遇到无权文档抛 PermissionError，不返回部分列表。无需网络、持久化或并发；update 仅由可信调用方传 title/body/shared，不要求更新 API 自身鉴权。不要修改测试，运行 python -B test_public.py。",
+    "fixture": {
+      "documents/__init__.py": "\"\"\"Document rendering and shared content caching.\"\"\"\n",
+      "documents/cache.py": "import copy\n\n\nclass Cache:\n    def __init__(self):\n        self.entries = {}\n\n    def get(self, key):\n        return copy.deepcopy(self.entries.get(key))\n\n    def put(self, key, value):\n        self.entries[key] = copy.deepcopy(value)\n",
+      "documents/repository.py": "import copy\n\n\nclass Repository:\n    def __init__(self, rows):\n        self.rows = {row[\"id\"]: copy.deepcopy(row) for row in rows}\n\n    def get(self, doc_id):\n        return copy.deepcopy(self.rows[doc_id])\n\n    def update(self, doc_id, **changes):\n        self.rows[doc_id].update(copy.deepcopy(changes))\n        return self.get(doc_id)\n",
+      "documents/service.py": "class DocumentService:\n    def __init__(self, repository, cache):\n        self.repository = repository\n        self.cache = cache\n\n    def read(self, actor, doc_id):\n        cached = self.cache.get(doc_id)\n        if cached is not None:\n            return cached\n        row = self.repository.get(doc_id)\n        if actor != row[\"owner\"] and actor not in row[\"shared\"]:\n            raise PermissionError(\"not shared\")\n        result = {key: row[key] for key in (\"id\", \"title\", \"body\", \"revision\")}\n        self.cache.put(doc_id, result)\n        return result\n\n    def read_many(self, actor, ids):\n        return [self.read(actor, doc_id) for doc_id in ids]\n",
+      "test_public.py": "from documents.repository import Repository\nfrom documents.cache import Cache\nfrom documents.service import DocumentService\n\nrepo = Repository([dict(id=\"d\", owner=\"alice\", shared=[\"bob\"], title=\"One\", body=\"Text\", revision=1)])\nservice = DocumentService(repo, Cache())\nassert service.read(\"alice\", \"d\")[\"title\"] == \"One\"\nassert service.read(\"bob\", \"d\")[\"body\"] == \"Text\"\nassert service.read_many(\"alice\", [\"d\"])[0][\"id\"] == \"d\"\nprint(\"public document checks passed\")\n",
+      "TASK.md": "修复文档读取服务：缓存命中后仍需执行授权，文档编辑后不能读到旧内容。保留 Repository/DocumentService API。R1：每次 read(actor,doc_id) 根据当前 owner/shared 授权，仅 owner 或 shared 中用户可读；未授权抛 PermissionError，不因缓存已有内容放行，撤销共享后立即生效。不存在的文档继续抛 KeyError。R2：Repository.update 每次成功更新把 revision 增加一（即使值相同），保留未指定字段；read 必须反映最新 title/body，返回 {id,title,body,revision}，不能含 owner/shared。R3：缓存可跨用户复用同一修订内容，但不能用它替代授权；输入数据及返回对象的修改不能污染仓库或缓存。R4：read_many 按传入 id 顺序逐个调用 read；遇到无权文档抛 PermissionError，不返回部分列表。无需网络、持久化或并发；update 仅由可信调用方传 title/body/shared，不要求更新 API 自身鉴权。不要修改测试，运行 python -B test_public.py。\n"
+    },
+    "public_test": "test_public.py",
+    "hidden_test": "verifiers/REPO-H02.py",
+    "allowed_changes": [
+      "documents/repository.py",
+      "documents/service.py",
+      "documents/cache.py"
+    ],
+    "dataset_version": "repository-maintenance-v1",
+    "suite_hash": "4e8fa00dd1999fec4cd25b0caaf97620eb2da9246ea55c6b273c120801838c04",
+    "requirements": {
+      "R1": [
+        "test_R1_authorize_every_read"
+      ],
+      "R2": [
+        "test_R2_revision_and_freshness"
+      ],
+      "R3": [
+        "test_R3_snapshot_isolation"
+      ],
+      "R4": [
+        "test_R4_batch_authorization"
+      ]
+    }
+  },
+  {
+    "id": "REPO-H01",
+    "split": "holdout",
+    "issue": "维护事件查询 API，修复同时间事件跨页丢失，以及其他租户事件影响分页的问题。保持 feed(repo,tenant,limit,cursor=None) 接口，返回 {items,next_cursor}。R1：先筛选 tenant，再按 (created_at,id) 升序；cursor 表示最后已读复合键，只返回严格大于该键的记录，时间相同按 id 排序，不丢失不重复。R2：每页最多 limit 条，只有还存在下一条符合条件的记录时 next_cursor 非 None，值必须指向本页最后一条；空页 next_cursor=None。R3：encode(tenant,row) 返回游标字符串，decode(token,tenant) 返回 (created_at,id) 二元组；无需保持旧格式兼容，但必须绑定 tenant，跨租户或格式损坏的游标抛 ValueError（包括解码成功但类型/字段错误的结构，布尔值不是合法整数键）。R4：items 是独立快照，修改返回项不影响仓库；已有无游标查询行为保留。记录 id 为唯一正整数，created_at 为整数，tenant 为非空字符串，limit 为正整数；不要求并发插入一致性或游标签名防篡改。不要修改测试，运行 python -B test_public.py。",
+    "fixture": {
+      "feed/__init__.py": "\"\"\"Tenant-scoped event feed.\"\"\"\n",
+      "feed/api.py": "from .cursor import encode, decode\n\n\ndef feed(repo, tenant, limit, cursor=None):\n    after = decode(cursor, tenant) if cursor is not None else None\n    rows = repo.page(tenant, after, limit + 1)\n    items = rows[:limit]\n    next_cursor = encode(tenant, items[-1]) if len(rows) > limit else None\n    return {\"items\": items, \"next_cursor\": next_cursor}\n",
+      "feed/cursor.py": "import base64\nimport json\n\n\ndef encode(tenant, row):\n    value = {\"time\": row[\"created_at\"]}\n    return base64.urlsafe_b64encode(json.dumps(value).encode()).decode()\n\n\ndef decode(token, tenant):\n    try:\n        value = json.loads(base64.urlsafe_b64decode(token).decode())\n        return value[\"time\"], 0\n    except Exception as exc:\n        raise ValueError(\"invalid cursor\") from exc\n",
+      "feed/repository.py": "import copy\n\n\nclass Repository:\n    def __init__(self, rows):\n        self.rows = copy.deepcopy(rows)\n\n    def page(self, tenant, after, count):\n        rows = sorted(self.rows, key=lambda row: row[\"created_at\"])\n        rows = [row for row in rows if after is None or row[\"created_at\"] > after[0]]\n        rows = rows[:count]\n        return copy.deepcopy([row for row in rows if row[\"tenant\"] == tenant])\n",
+      "test_public.py": "from feed.api import feed\nfrom feed.repository import Repository\n\nrepo = Repository([{\"tenant\": \"a\", \"id\": 1, \"created_at\": 10}, {\"tenant\": \"a\", \"id\": 2, \"created_at\": 20}])\npage = feed(repo, \"a\", 1)\nassert [r[\"id\"] for r in page[\"items\"]] == [1]\nassert [r[\"id\"] for r in feed(repo, \"a\", 1, page[\"next_cursor\"])[\"items\"]] == [2]\nprint(\"public feed checks passed\")\n",
+      "TASK.md": "维护事件查询 API，修复同时间事件跨页丢失，以及其他租户事件影响分页的问题。保持 feed(repo,tenant,limit,cursor=None) 接口，返回 {items,next_cursor}。R1：先筛选 tenant，再按 (created_at,id) 升序；cursor 表示最后已读复合键，只返回严格大于该键的记录，时间相同按 id 排序，不丢失不重复。R2：每页最多 limit 条，只有还存在下一条符合条件的记录时 next_cursor 非 None，值必须指向本页最后一条；空页 next_cursor=None。R3：encode(tenant,row) 返回游标字符串，decode(token,tenant) 返回 (created_at,id) 二元组；无需保持旧格式兼容，但必须绑定 tenant，跨租户或格式损坏的游标抛 ValueError（包括解码成功但类型/字段错误的结构，布尔值不是合法整数键）。R4：items 是独立快照，修改返回项不影响仓库；已有无游标查询行为保留。记录 id 为唯一正整数，created_at 为整数，tenant 为非空字符串，limit 为正整数；不要求并发插入一致性或游标签名防篡改。不要修改测试，运行 python -B test_public.py。\n"
+    },
+    "public_test": "test_public.py",
+    "hidden_test": "verifiers/REPO-H01.py",
+    "allowed_changes": [
+      "feed/cursor.py",
+      "feed/repository.py",
+      "feed/api.py"
+    ],
+    "dataset_version": "repository-maintenance-v1",
+    "suite_hash": "4e8fa00dd1999fec4cd25b0caaf97620eb2da9246ea55c6b273c120801838c04",
+    "requirements": {
+      "R1": [
+        "test_R1_order_and_ties"
+      ],
+      "R2": [
+        "test_R2_terminal_pages"
+      ],
+      "R3": [
+        "test_R3_cursor_validation"
+      ],
+      "R4": [
+        "test_R4_copy_isolation"
+      ]
+    }
+  }
+]

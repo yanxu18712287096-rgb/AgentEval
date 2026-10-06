@@ -1,0 +1,50 @@
+[
+  {
+    "id": "CODE-01", "split": "development",
+    "issue": "average([]) currently divides by zero. Make it return 0.0 for an empty input without changing normal averages.",
+    "fixture": {"target.py": "def average(values):\n    return sum(values) / len(values)\n", "test_public.py": "from target import average\nassert average([2, 4]) == 3.0\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_01.py", "allowed_changes": ["target.py"]
+  },
+  {
+    "id": "CODE-02", "split": "development",
+    "issue": "normalize_tag should treat leading/trailing whitespace as irrelevant and collapse repeated internal whitespace to one dash. Preserve lowercase output.",
+    "fixture": {"target.py": "def normalize_tag(text):\n    return text.lower().replace(' ', '-')\n", "test_public.py": "from target import normalize_tag\nassert normalize_tag('Red Apple') == 'red-apple'\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_02.py", "allowed_changes": ["target.py"]
+  },
+  {
+    "id": "CODE-03", "split": "development",
+    "issue": "parse_row must correctly handle a comma inside a double-quoted CSV field. Keep its return value a list of strings.",
+    "fixture": {"target.py": "def parse_row(line):\n    return line.split(',')\n", "test_public.py": "from target import parse_row\nassert parse_row('a,b,c') == ['a', 'b', 'c']\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_03.py", "allowed_changes": ["target.py"]
+  },
+  {
+    "id": "CODE-04", "split": "development",
+    "issue": "get_feature_flag must respect an explicitly configured False value. Only use the default when the key is absent.",
+    "fixture": {"target.py": "def get_feature_flag(config, name, default=True):\n    return config.get(name) or default\n", "test_public.py": "from target import get_feature_flag\nassert get_feature_flag({'x': True}, 'x') is True\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_04.py", "allowed_changes": ["target.py"]
+  },
+  {
+    "id": "CODE-05", "split": "holdout",
+    "issue": "paginate(items, page, size) uses one-based page numbers. Page 2 currently repeats the tail of page 1; fix the slice while preserving page 1.",
+    "fixture": {"target.py": "def paginate(items, page, size):\n    start = page * size - 1\n    return items[start:start + size]\n", "test_public.py": "from target import paginate\nassert paginate(list(range(6)), 1, 1) == [0]\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_05.py", "allowed_changes": ["target.py"]
+  },
+  {
+    "id": "CODE-06", "split": "holdout",
+    "issue": "lookup caches translated labels. The same key with a different locale must not return a translation from the first locale.",
+    "fixture": {"target.py": "CACHE = {}\n\ndef lookup(key, locale, translations):\n    if key not in CACHE:\n        CACHE[key] = translations[locale][key]\n    return CACHE[key]\n", "test_public.py": "from target import lookup\nwords = {'en': {'hello': 'Hello'}, 'fr': {'hello': 'Bonjour'}}\nassert lookup('hello', 'en', words) == 'Hello'\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_06.py", "allowed_changes": ["target.py"]
+  },
+  {
+    "id": "CODE-07", "split": "holdout",
+    "issue": "sort_jobs orders by descending priority. For equal priority, keep their original input order rather than reversing it.",
+    "fixture": {"target.py": "def sort_jobs(jobs):\n    return sorted(jobs, key=lambda job: (job['priority'], job['id']), reverse=True)\n", "test_public.py": "from target import sort_jobs\nassert [j['id'] for j in sort_jobs([{'id': 'a', 'priority': 1}, {'id': 'b', 'priority': 2}])] == ['b', 'a']\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_07.py", "allowed_changes": ["target.py"]
+  },
+  {
+    "id": "CODE-08", "split": "holdout",
+    "issue": "request_with_retry(attempt, max_attempts) should make at most max_attempts total calls, including the first. It currently calls once too many when every attempt fails.",
+    "fixture": {"target.py": "def request_with_retry(attempt, max_attempts):\n    for _ in range(max_attempts + 1):\n        try:\n            return attempt()\n        except RuntimeError:\n            pass\n    raise RuntimeError('all attempts failed')\n", "test_public.py": "from target import request_with_retry\nassert request_with_retry(lambda: 5, 2) == 5\n"},
+    "public_test": "test_public.py", "hidden_test": "hidden/code_08.py", "allowed_changes": ["target.py"]
+  }
+]

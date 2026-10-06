@@ -1,0 +1,6 @@
+{
+  "id":"REPO-D03", "split":"development", "version":"1", "title":"批量库存预留的原子性与幂等释放",
+  "issue":"修复库存预留服务，保留 reserve/release 接口。R1：reserve(order_id, items) 中 items 是 SKU 到正整数的字典；任一 SKU 不存在或不足时抛 ValueError，所有库存和预留记录保持调用前状态，不能部分扣减。R2：相同 order_id、相同 items 的重试直接返回既有预留的独立快照，不重复扣库存；相同 id、不同 items 抛 ValueError，且无状态变化。R3：release 只把 active 预留恢复一次，改为 released；重复释放不增加库存，未知 id 抛 KeyError。已释放订单以相同内容 reserve 返回 released 记录，不重新扣减。R4：输入字典与返回记录的后续修改不能改变内部状态；正常多 SKU 预留与释放保留。单进程内存仓库，不要求并发、持久化、空 items 或非法数量处理。测试不可修改，运行 python -B test_public.py。",
+  "allowed_changes":["inventory/stock.py","inventory/service.py","inventory/ledger.py"],
+  "requirements":{"R1":["test_R1_atomic_failure"],"R2":["test_R2_idempotency_conflict"],"R3":["test_R3_release_once"],"R4":["test_R4_snapshot_isolation"]}
+}

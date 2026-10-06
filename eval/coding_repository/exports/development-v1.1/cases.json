@@ -1,0 +1,109 @@
+[
+  {
+    "id": "REPO-D02",
+    "split": "development",
+    "issue": "修复客户端配置链路：有时用户显式关闭重试或关闭缓存没有生效。保持现有 resolve(defaults,file_config,env,cli) 与 build_request API。R1：优先级 defaults < file_config < env < cli，只有缺失键表示未提供；False、0、空字符串均为显式值。env 只读取 APP_RETRIES、APP_CACHE、APP_LABEL，未知环境变量忽略；其他层为类型正确的部分字典，defaults 完整。R2：APP_RETRIES 必须为仅含 ASCII 0-9 的非空字符串，不接受符号、空白或其他数字字符；APP_CACHE 只接受不区分大小写的 true/false，不去除空白，错误值抛 ValueError；APP_LABEL 保留原文。R3：resolve 不修改任何输入；返回 Config，build_request 必须原样传播 retries/cache/label，不能在调用方再次用真假判断补默认值。R4：现有无覆盖默认行为与客户端 URL 保持不变。无需处理 None、额外字典字段、负的其他层重试值或网络请求。测试不可修改，运行 python -B test_public.py。",
+    "fixture": {
+      "client/__init__.py": "\"\"\"Configuration and request construction; no network I/O.\"\"\"\n",
+      "client/config.py": "from dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Config:\n    retries: int\n    cache: bool\n    label: str\n\n\ndef parse_env(env):\n    result = {}\n    if \"APP_RETRIES\" in env:\n        result[\"retries\"] = int(env[\"APP_RETRIES\"])\n    if \"APP_CACHE\" in env:\n        result[\"cache\"] = bool(env[\"APP_CACHE\"])\n    if \"APP_LABEL\" in env:\n        result[\"label\"] = env[\"APP_LABEL\"]\n    return result\n\n\ndef resolve(defaults, file_config, env, cli):\n    merged = dict(defaults)\n    for layer in (file_config, parse_env(env), cli):\n        for key, value in layer.items():\n            if value:\n                merged[key] = value\n    return Config(**merged)\n",
+      "client/request.py": "def build_request(config, url):\n    return {\n        \"url\": url,\n        \"retries\": config.retries or 3,\n        \"cache\": config.cache or True,\n        \"label\": config.label or \"default\",\n    }\n",
+      "client/service.py": "from .config import resolve\nfrom .request import build_request\n\nDEFAULTS = {\"retries\": 3, \"cache\": True, \"label\": \"default\"}\n\n\ndef prepare(url, file_config=None, env=None, cli=None):\n    config = resolve(DEFAULTS, file_config or {}, env or {}, cli or {})\n    return build_request(config, url)\n",
+      "test_public.py": "from client.service import prepare\n\nassert prepare(\"/items\") == {\"url\": \"/items\", \"retries\": 3, \"cache\": True, \"label\": \"default\"}\nassert prepare(\"/items\", cli={\"retries\": 5})[\"retries\"] == 5\nassert prepare(\"/items\", env={\"APP_LABEL\": \"batch\"})[\"label\"] == \"batch\"\nprint(\"public client checks passed\")\n",
+      "TASK.md": "修复客户端配置链路：有时用户显式关闭重试或关闭缓存没有生效。保持现有 resolve(defaults,file_config,env,cli) 与 build_request API。R1：优先级 defaults < file_config < env < cli，只有缺失键表示未提供；False、0、空字符串均为显式值。env 只读取 APP_RETRIES、APP_CACHE、APP_LABEL，未知环境变量忽略；其他层为类型正确的部分字典，defaults 完整。R2：APP_RETRIES 必须为仅含 ASCII 0-9 的非空字符串，不接受符号、空白或其他数字字符；APP_CACHE 只接受不区分大小写的 true/false，不去除空白，错误值抛 ValueError；APP_LABEL 保留原文。R3：resolve 不修改任何输入；返回 Config，build_request 必须原样传播 retries/cache/label，不能在调用方再次用真假判断补默认值。R4：现有无覆盖默认行为与客户端 URL 保持不变。无需处理 None、额外字典字段、负的其他层重试值或网络请求。测试不可修改，运行 python -B test_public.py。\n"
+    },
+    "public_test": "test_public.py",
+    "hidden_test": "verifiers/REPO-D02.py",
+    "allowed_changes": [
+      "client/config.py",
+      "client/request.py"
+    ],
+    "dataset_version": "repository-maintenance-v1.1",
+    "suite_hash": "818efecd1e28b2b583d9c932645953c07a533946c639cba5dbb3bdf01a2b720e",
+    "requirements": {
+      "R1": [
+        "test_R1_precedence"
+      ],
+      "R2": [
+        "test_R2_env_validation"
+      ],
+      "R3": [
+        "test_R3_caller_and_immutability"
+      ],
+      "R4": [
+        "test_R4_defaults"
+      ]
+    }
+  },
+  {
+    "id": "REPO-D03",
+    "split": "development",
+    "issue": "修复库存预留服务，保留 reserve/release 接口。R1：reserve(order_id, items) 中 items 是 SKU 到正整数的字典；任一 SKU 不存在或不足时抛 ValueError，所有库存和预留记录保持调用前状态，不能部分扣减。R2：相同 order_id、相同 items 的重试直接返回既有预留的独立快照，不重复扣库存；相同 id、不同 items 抛 ValueError，且无状态变化。R3：release 只把 active 预留恢复一次，改为 released；重复释放不增加库存，未知 id 抛 KeyError。已释放订单以相同内容 reserve 返回 released 记录，不重新扣减。R4：输入字典与返回记录的后续修改不能改变内部状态；正常多 SKU 预留与释放保留。单进程内存仓库，不要求并发、持久化、空 items 或非法数量处理。测试不可修改，运行 python -B test_public.py。",
+    "fixture": {
+      "inventory/__init__.py": "\"\"\"In-memory reservations for a single process.\"\"\"\n",
+      "inventory/ledger.py": "import copy\n\n\nclass Ledger:\n    def __init__(self):\n        self.records = {}\n\n    def get(self, order_id):\n        return copy.deepcopy(self.records[order_id])\n\n    def add(self, order_id, items):\n        self.records[order_id] = {\"order_id\": order_id, \"items\": copy.deepcopy(items), \"status\": \"active\"}\n        return self.get(order_id)\n\n    def mark_released(self, order_id):\n        self.records[order_id][\"status\"] = \"released\"\n",
+      "inventory/service.py": "class Reservations:\n    def __init__(self, stock, ledger):\n        self.stock = stock\n        self.ledger = ledger\n\n    def reserve(self, order_id, items):\n        self.stock.take(items)\n        return self.ledger.add(order_id, items)\n\n    def release(self, order_id):\n        record = self.ledger.get(order_id)\n        self.stock.restore(record[\"items\"])\n        self.ledger.mark_released(order_id)\n        return self.ledger.get(order_id)\n",
+      "inventory/stock.py": "class Stock:\n    def __init__(self, quantities):\n        self.quantities = dict(quantities)\n\n    def take(self, items):\n        for sku, amount in items.items():\n            if sku not in self.quantities or self.quantities[sku] < amount:\n                raise ValueError(\"insufficient stock\")\n            self.quantities[sku] -= amount\n\n    def restore(self, items):\n        for sku, amount in items.items():\n            self.quantities[sku] += amount\n\n    def snapshot(self):\n        return dict(self.quantities)\n",
+      "test_public.py": "from inventory.stock import Stock\nfrom inventory.ledger import Ledger\nfrom inventory.service import Reservations\n\nstock = Stock({\"a\": 8, \"b\": 5})\nservice = Reservations(stock, Ledger())\nassert service.reserve(\"one\", {\"a\": 2, \"b\": 1})[\"status\"] == \"active\"\nassert stock.snapshot() == {\"a\": 6, \"b\": 4}\nassert service.release(\"one\")[\"status\"] == \"released\"\nassert stock.snapshot() == {\"a\": 8, \"b\": 5}\nprint(\"public inventory checks passed\")\n",
+      "TASK.md": "修复库存预留服务，保留 reserve/release 接口。R1：reserve(order_id, items) 中 items 是 SKU 到正整数的字典；任一 SKU 不存在或不足时抛 ValueError，所有库存和预留记录保持调用前状态，不能部分扣减。R2：相同 order_id、相同 items 的重试直接返回既有预留的独立快照，不重复扣库存；相同 id、不同 items 抛 ValueError，且无状态变化。R3：release 只把 active 预留恢复一次，改为 released；重复释放不增加库存，未知 id 抛 KeyError。已释放订单以相同内容 reserve 返回 released 记录，不重新扣减。R4：输入字典与返回记录的后续修改不能改变内部状态；正常多 SKU 预留与释放保留。单进程内存仓库，不要求并发、持久化、空 items 或非法数量处理。测试不可修改，运行 python -B test_public.py。\n"
+    },
+    "public_test": "test_public.py",
+    "hidden_test": "verifiers/REPO-D03.py",
+    "allowed_changes": [
+      "inventory/stock.py",
+      "inventory/service.py",
+      "inventory/ledger.py"
+    ],
+    "dataset_version": "repository-maintenance-v1.1",
+    "suite_hash": "818efecd1e28b2b583d9c932645953c07a533946c639cba5dbb3bdf01a2b720e",
+    "requirements": {
+      "R1": [
+        "test_R1_atomic_failure"
+      ],
+      "R2": [
+        "test_R2_idempotency_conflict"
+      ],
+      "R3": [
+        "test_R3_release_once"
+      ],
+      "R4": [
+        "test_R4_snapshot_isolation"
+      ]
+    }
+  },
+  {
+    "id": "REPO-D01",
+    "split": "development",
+    "issue": "维护现有文件化任务队列。Worker 崩溃后部分任务无法重新领取，达到次数上限的任务却还会执行。请修复并保留现有 enqueue/claim/finish API。R1：每次成功领取时 attempts 加一，enqueue 后为零；finish 不再增加，成功变 done，失败在 attempts < max_attempts 时回 pending，否则 failed。R2：recover(now) 仅处理 running 且 lease_until <= now 的任务，清除租约；未耗尽次数的回 pending，耗尽的变 failed，返回实际恢复数；未到期、done、failed 保持不变。R3：恢复和领取的状态必须写入 JSON，重新构造 Store 后仍一致，重复恢复不重复计数。R4：claim 只领取 pending，返回领取后的独立快照；已领取任务不能再次领取。任务 id 唯一，max_attempts 为正整数，时间为数值；不用处理并发写入或损坏文件。不要修改测试，使用标准库，运行 python -B test_public.py。",
+    "fixture": {
+      "queueapp/__init__.py": "\"\"\"A single-process, file-backed job queue.\"\"\"\n",
+      "queueapp/recovery.py": "def recover(store, now):\n    \"\"\"Recover expired running work before a worker starts polling.\"\"\"\n    count = 0\n    for job in store.jobs.values():\n        if job[\"status\"] == \"running\" and job[\"lease_until\"] < now:\n            job[\"status\"] = \"pending\"\n            job[\"lease_until\"] = None\n            count += 1\n    return count\n",
+      "queueapp/store.py": "import copy\nimport json\nfrom pathlib import Path\n\n\nclass Store:\n    def __init__(self, path):\n        self.path = Path(path)\n        self.jobs = json.loads(self.path.read_text()) if self.path.exists() else {}\n\n    def save(self):\n        self.path.write_text(json.dumps(self.jobs, sort_keys=True))\n\n    def enqueue(self, job_id, payload, max_attempts=3):\n        if job_id in self.jobs:\n            raise ValueError(\"duplicate job\")\n        self.jobs[job_id] = dict(id=job_id, payload=copy.deepcopy(payload), status=\"pending\",\n                                 attempts=0, max_attempts=max_attempts, lease_until=None)\n        self.save()\n\n    def get(self, job_id):\n        return copy.deepcopy(self.jobs[job_id])\n\n    def claim(self, job_id, now, lease_seconds):\n        job = self.jobs[job_id]\n        if job[\"status\"] != \"pending\":\n            return None\n        job[\"status\"] = \"running\"\n        job[\"lease_until\"] = now + lease_seconds\n        self.save()\n        return copy.deepcopy(job)\n\n    def finish(self, job_id, success):\n        job = self.jobs[job_id]\n        if job[\"status\"] != \"running\":\n            raise ValueError(\"job is not running\")\n        job[\"attempts\"] += 1\n        job[\"lease_until\"] = None\n        job[\"status\"] = \"done\" if success else (\n            \"pending\" if job[\"attempts\"] < job[\"max_attempts\"] else \"failed\")\n        self.save()\n",
+      "queueapp/worker.py": "from .recovery import recover\n\n\ndef run_one(store, job_id, handler, now, lease_seconds=30):\n    recover(store, now)\n    claimed = store.claim(job_id, now, lease_seconds)\n    if claimed is None:\n        return False\n    try:\n        handler(claimed[\"payload\"])\n    except RuntimeError:\n        store.finish(job_id, False)\n    else:\n        store.finish(job_id, True)\n    return True\n",
+      "test_public.py": "import tempfile\nfrom pathlib import Path\nfrom queueapp.store import Store\nfrom queueapp.worker import run_one\n\nwith tempfile.TemporaryDirectory() as temp:\n    path = Path(temp) / \"jobs.json\"\n    store = Store(path)\n    store.enqueue(\"a\", {\"value\": 3})\n    received = []\n    assert run_one(store, \"a\", received.append, now=10)\n    assert received == [{\"value\": 3}]\n    assert Store(path).get(\"a\")[\"status\"] == \"done\"\n    assert not run_one(store, \"a\", received.append, now=20)\nprint(\"public queue checks passed\")\n",
+      "TASK.md": "维护现有文件化任务队列。Worker 崩溃后部分任务无法重新领取，达到次数上限的任务却还会执行。请修复并保留现有 enqueue/claim/finish API。R1：每次成功领取时 attempts 加一，enqueue 后为零；finish 不再增加，成功变 done，失败在 attempts < max_attempts 时回 pending，否则 failed。R2：recover(now) 仅处理 running 且 lease_until <= now 的任务，清除租约；未耗尽次数的回 pending，耗尽的变 failed，返回实际恢复数；未到期、done、failed 保持不变。R3：恢复和领取的状态必须写入 JSON，重新构造 Store 后仍一致，重复恢复不重复计数。R4：claim 只领取 pending，返回领取后的独立快照；已领取任务不能再次领取。任务 id 唯一，max_attempts 为正整数，时间为数值；不用处理并发写入或损坏文件。不要修改测试，使用标准库，运行 python -B test_public.py。\n"
+    },
+    "public_test": "test_public.py",
+    "hidden_test": "verifiers/REPO-D01.py",
+    "allowed_changes": [
+      "queueapp/store.py",
+      "queueapp/recovery.py",
+      "queueapp/worker.py"
+    ],
+    "dataset_version": "repository-maintenance-v1.1",
+    "suite_hash": "818efecd1e28b2b583d9c932645953c07a533946c639cba5dbb3bdf01a2b720e",
+    "requirements": {
+      "R1": [
+        "test_R1_attempt_accounting"
+      ],
+      "R2": [
+        "test_R2_recovery_boundaries"
+      ],
+      "R3": [
+        "test_R3_durable_idempotent"
+      ],
+      "R4": [
+        "test_R4_claim_exclusion"
+      ]
+    }
+  }
+]

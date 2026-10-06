@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+venv311/
+venv*/
+*.pem
+*.key
+.mypy_cache/
+.ruff_cache/
+.corecoder_history
+.DS_Store
+.pytest_cache/
+.tmp/
+eval/runs/
+# Historical reading articles / demos remain local, outside AgentEval publication.
+/article/
+/assets/

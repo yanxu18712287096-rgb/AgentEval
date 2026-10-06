@@ -1,0 +1,6 @@
+{
+  "id":"REPO-H02", "split":"holdout", "version":"1", "title":"文档缓存的授权与修订一致性",
+  "issue":"修复文档读取服务：缓存命中后仍需执行授权，文档编辑后不能读到旧内容。保留 Repository/DocumentService API。R1：每次 read(actor,doc_id) 根据当前 owner/shared 授权，仅 owner 或 shared 中用户可读；未授权抛 PermissionError，不因缓存已有内容放行，撤销共享后立即生效。不存在的文档继续抛 KeyError。R2：Repository.update 每次成功更新把 revision 增加一（即使值相同），保留未指定字段；read 必须反映最新 title/body，返回 {id,title,body,revision}，不能含 owner/shared。R3：缓存可跨用户复用同一修订内容，但不能用它替代授权；输入数据及返回对象的修改不能污染仓库或缓存。R4：read_many 按传入 id 顺序逐个调用 read；遇到无权文档抛 PermissionError，不返回部分列表。无需网络、持久化或并发；update 仅由可信调用方传 title/body/shared，不要求更新 API 自身鉴权。不要修改测试，运行 python -B test_public.py。",
+  "allowed_changes":["documents/repository.py","documents/service.py","documents/cache.py"],
+  "requirements":{"R1":["test_R1_authorize_every_read"],"R2":["test_R2_revision_and_freshness"],"R3":["test_R3_snapshot_isolation"],"R4":["test_R4_batch_authorization"]}
+}

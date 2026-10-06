@@ -1,0 +1,7 @@
+{
+  "id": "REPO-D01", "split": "development", "version": "1",
+  "title": "任务队列租约恢复与执行次数核算",
+  "issue": "维护现有文件化任务队列。Worker 崩溃后部分任务无法重新领取，达到次数上限的任务却还会执行。请修复并保留现有 enqueue/claim/finish API。R1：每次成功领取时 attempts 加一，enqueue 后为零；finish 不再增加，成功变 done，失败在 attempts < max_attempts 时回 pending，否则 failed。R2：recover(now) 仅处理 running 且 lease_until <= now 的任务，清除租约；未耗尽次数的回 pending，耗尽的变 failed，返回实际恢复数；未到期、done、failed 保持不变。R3：恢复和领取的状态必须写入 JSON，重新构造 Store 后仍一致，重复恢复不重复计数。R4：claim 只领取 pending，返回领取后的独立快照；已领取任务不能再次领取。任务 id 唯一，max_attempts 为正整数，时间为数值；不用处理并发写入或损坏文件。不要修改测试，使用标准库，运行 python -B test_public.py。",
+  "allowed_changes": ["queueapp/store.py", "queueapp/recovery.py", "queueapp/worker.py"],
+  "requirements": {"R1": ["test_R1_attempt_accounting"], "R2": ["test_R2_recovery_boundaries"], "R3": ["test_R3_durable_idempotent"], "R4": ["test_R4_claim_exclusion"]}
+}

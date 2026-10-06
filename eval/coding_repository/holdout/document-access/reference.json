@@ -1,0 +1,8 @@
+{
+  "documents/repository.py":[["        self.rows[doc_id].update(copy.deepcopy(changes))","        self.rows[doc_id].update(copy.deepcopy(changes))\n        self.rows[doc_id]['revision'] += 1"]],
+  "documents/service.py":[
+    ["        cached = self.cache.get(doc_id)\n        if cached is not None:\n            return cached\n", ""],
+    ["        result = {key: row[key]", "        key = (doc_id, row['revision'])\n        cached = self.cache.get(key)\n        if cached is not None:\n            return cached\n        result = {key: row[key]"],
+    ["self.cache.put(doc_id, result)","self.cache.put(key, result)"]
+  ]
+}

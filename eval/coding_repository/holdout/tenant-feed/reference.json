@@ -1,0 +1,11 @@
+{
+  "feed/cursor.py":[
+    ["base64.urlsafe_b64decode(token)","base64.b64decode(token, altchars=b'-_', validate=True)"],
+    ["value = {\"time\": row[\"created_at\"]}","value = {'time': row['created_at'], 'id': row['id'], 'tenant': tenant}"],
+    ["        return value[\"time\"], 0","        if not isinstance(value, dict) or value.get('tenant') != tenant:\n            raise ValueError('wrong tenant')\n        if type(value.get('time')) is not int or type(value.get('id')) is not int or value['id'] <= 0:\n            raise ValueError('invalid key')\n        return value['time'], value['id']"]
+  ],
+  "feed/repository.py":[
+    ["rows = sorted(self.rows, key=lambda row: row[\"created_at\"])","rows = sorted((r for r in self.rows if r['tenant'] == tenant), key=lambda r: (r['created_at'], r['id']))"],
+    ["row[\"created_at\"] > after[0]","(row['created_at'], row['id']) > after"]
+  ]
+}

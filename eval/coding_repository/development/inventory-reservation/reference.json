@@ -1,0 +1,7 @@
+{
+  "inventory/stock.py":[["            self.quantities[sku] -= amount","        for sku, amount in items.items():\n            self.quantities[sku] -= amount"]],
+  "inventory/service.py":[
+    ["        self.stock.take(items)","        if order_id in self.ledger.records:\n            previous = self.ledger.get(order_id)\n            if previous['items'] != items:\n                raise ValueError('idempotency conflict')\n            return previous\n        self.stock.take(items)"],
+    ["        self.stock.restore(record[\"items\"])","        if record['status'] == 'released':\n            return record\n        self.stock.restore(record[\"items\"])"]
+  ]
+}

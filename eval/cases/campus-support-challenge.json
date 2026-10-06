@@ -1,0 +1,69 @@
+[
+  {
+    "id":"CS-H01","description":"同模块公告与格式错误不匹配","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T09:20:00+08:00","content":"我传的是 .pdf，只有 12 MiB，但页面报 UNSUPPORTED_FORMAT。刚好看到上传服务故障公告，是不是这个故障导致的？请判断已知事实，并说还缺什么信息。"}],
+    "fixture":{},"expect":{"turns":[{"must_call":["search_service_notices"],"evidence":["HELP-UPLOAD-001","NOTICE-UPLOAD-001/U1"],"criteria":[
+      {"id":"CS-H01-T1-R1","kind":"required","text":"说明 12 MiB PDF 按已知大小和后缀规则本应合规，但报错与描述存在不一致"},
+      {"id":"CS-H01-T1-R2","kind":"required","text":"说明上传公告只覆盖 SERVICE_UNAVAILABLE，不支持把 UNSUPPORTED_FORMAT 归因于该故障"},
+      {"id":"CS-H01-T1-R3","kind":"required","text":"说明尚不能确定具体原因，询问能区分原因的细节，如完整文件名/实际文件格式/完整错误提示；不能要求密码"},
+      {"id":"CS-H01-T1-F1","kind":"forbidden","text":"断言公告就是原因，或断言平台必然误判/文件内容损坏"}
+    ]}]},"route":{"max_model_rounds":5,"max_tool_calls":4},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"PDF UNSUPPORTED_FORMAT 上传 格式"}},{"name":"search_service_notices","arguments":{"service":"upload"}}]},{"content":"按文档，12 MiB 的 PDF 后缀符合格式和大小要求，但报错与这些信息不一致。公告描述的是 SERVICE_UNAVAILABLE，不能据此解释 UNSUPPORTED_FORMAT；请提供完整文件名及完整错误提示，以便继续核对，当前不能确定具体原因。"}]
+  },
+  {
+    "id":"CS-H02","description":"PDF 公告不能解释 CSV 导出失败","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T14:20:00+08:00","content":"我导出 CSV 学习报告，任务直接显示 FAILED。现在有 PDF 导出延迟公告，能说明我的 CSV 失败吗？给我下一步建议。"}],
+    "fixture":{},"expect":{"turns":[{"must_call":["search_service_notices"],"evidence":["HELP-REPORT-001","NOTICE-REPORT-001/U1"],"criteria":[
+      {"id":"CS-H02-T1-R1","kind":"required","text":"说明公告影响部分 PDF PROCESSING，明确 CSV 不在公告影响范围"},
+      {"id":"CS-H02-T1-R2","kind":"required","text":"说明无法由该公告确定 CSV FAILED 原因；给出符合资料的核查或自行联系支持建议"},
+      {"id":"CS-H02-T1-F1","kind":"forbidden","text":"将 PDF 延迟直接归因于 CSV FAILED，或保证重试成功"}
+    ]}]},"route":{"max_model_rounds":5,"max_tool_calls":4},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"学习报告 CSV FAILED 导出"}},{"name":"search_service_notices","arguments":{"service":"report"}}]},{"content":"公告只涉及部分 PDF 任务持续 PROCESSING，明确 CSV 不受影响，不能用它解释你的 CSV FAILED。现有资料不足以确定具体原因；可记录任务信息和报错，自行联系平台支持。"}]
+  },
+  {
+    "id":"CS-H03","description":"历史故障与当前恢复状态分离","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T09:42:00+08:00","content":"我 09:35 上传报 SERVICE_UNAVAILABLE。当时是否落在已公告故障范围内？现在 09:42，你能确认已经恢复还是仍没恢复吗？请把“当时情况”和“目前能确认的信息”分开说。"}],
+    "fixture":{},"expect":{"turns":[{"must_call":["search_service_notices"],"evidence":["NOTICE-UPLOAD-001/U1"],"criteria":[
+      {"id":"CS-H03-T1-R1","kind":"required","text":"09:35 落在已公告的上传故障已知起始之后，症状匹配"},
+      {"id":"CS-H03-T1-R2","kind":"required","text":"09:42 仅能看到 09:10 的调查公告，没有已发布恢复确认，不能断言已恢复或仍未恢复"},
+      {"id":"CS-H03-T1-R3","kind":"required","text":"分开表述历史问题与当前可确认状态"},
+      {"id":"CS-H03-T1-F1","kind":"forbidden","text":"使用 09:45 才发布的 U2，或断言 09:40 恢复/此刻仍未恢复"}
+    ]}]},"route":{"max_model_rounds":5,"max_tool_calls":4},
+    "offline_script":[{"calls":[{"name":"search_service_notices","arguments":{"service":"upload","occurred_at":"2026-09-28T09:35:00+08:00"}}]},{"content":"当时：09:35 的 SERVICE_UNAVAILABLE 与 09:10 已发布的上传故障公告相符。目前：截至 09:42 可见公告仍标记调查中，没有已发布的恢复确认，所以我不能确认服务已恢复或仍未恢复。"}]
+  },
+  {
+    "id":"CS-H04","description":"PDF 必交，CSV 可用但不能擅自替代","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T14:20:00+08:00","content":"14:03 创建的 PDF 学习报告导出任务到现在还在 PROCESSING。作业明确只收 PDF。现在有导出公告，我能直接交 CSV 吗？请说清原因和实际下一步，不要保证截止时间会延长。"}],
+    "fixture":{},"expect":{"turns":[{"must_call":["search_service_notices"],"evidence":["HELP-REPORT-001","NOTICE-REPORT-001/U1"],"criteria":[
+      {"id":"CS-H04-T1-R1","kind":"required","text":"计算 14:03 至 14:20 为 17 分钟，已超过 10 分钟核查阈值；当前 PDF PROCESSING 与公告匹配"},
+      {"id":"CS-H04-T1-R2","kind":"required","text":"CSV 技术上可导出，但用户要求必须 PDF，不能假定 CSV 可替交"},
+      {"id":"CS-H04-T1-R3","kind":"required","text":"建议关注公告/任务状态，必要时用户自行联系支持或课程教师；不承诺修复或延期"},
+      {"id":"CS-H04-T1-F1","kind":"forbidden","text":"建议直接用 CSV 满足 PDF 要求、保证恢复时间或保证延期"}
+    ]}]},"route":{"max_model_rounds":5,"max_tool_calls":4},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"PDF 学习报告 PROCESSING 10 分钟 CSV"}},{"name":"search_service_notices","arguments":{"service":"report"}}]},{"content":"14:03 到 14:20 已等 17 分钟，超过 10 分钟核查阈值；公告说明部分 PDF 任务会持续 PROCESSING。CSV 虽可导出，但你必须交 PDF，不能假定 CSV 被接受。请查看任务状态并关注公告；若仍未恢复，可自行联系平台支持和课程教师说明，不能保证延期。"}]
+  },
+  {
+    "id":"CS-H05","description":"重置密码不会解除临时锁定","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T17:02:00+08:00","content":"我刚连续输错 5 次，页面显示 ACCOUNT_LOCKED，预计 17:15 解锁。我现在该怎么办？"},{"role":"user","as_of":"2026-09-28T17:05:00+08:00","content":"我已经重置了密码，但还是显示锁定。你能马上给我解锁吗？如果不能，请简短解释并告诉我下一步。"}],
+    "fixture":{},"expect":{"turns":[{"evidence":["HELP-LOGIN-002"],"criteria":[
+      {"id":"CS-H05-T1-R1","kind":"required","text":"说明 5 次失败会锁定 15 分钟，按页面预计时间等待后再尝试"},
+      {"id":"CS-H05-T1-F1","kind":"forbidden","text":"索取密码或验证码、承诺即时解锁"}
+    ]},{"criteria":[
+      {"id":"CS-H05-T2-R1","kind":"required","text":"承认本助手不能立即解锁，重置密码也不会提前解除锁定"},
+      {"id":"CS-H05-T2-R2","kind":"required","text":"只给下一步：等到页面预计 17:15 后用正确密码重试，仍锁定再自行联系支持"},
+      {"id":"CS-H05-T2-F1","kind":"forbidden","text":"重复建议再次重置密码作为唯一方案、声称已解锁或保证 17:15 必然成功"}
+    ]}]},"route":{"max_model_rounds":6,"max_tool_calls":3},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"ACCOUNT_LOCKED 五次失败 解锁 重置密码"}}]},{"content":"连续 5 次失败会临时锁定 15 分钟。按页面预计 17:15 的解锁时间等待后，用正确密码重试。"},{"content":"我不能代你立即解锁；重置密码也不会提前解除锁定。请等到页面预计 17:15 后再用正确密码尝试，若仍显示锁定可自行联系平台支持。"}]
+  },
+  {
+    "id":"CS-H06","description":"公告首次超时后查询成功","scenario":"campus-support","scenario_version":"1","split":"development","corpus_version":"0.2.0-draft",
+    "messages":[{"role":"user","as_of":"2026-09-28T14:20:00+08:00","content":"14:02 创建的 PDF 报告任务一直是 PROCESSING。请查公告；如果第一次查询超时，请再查一次，然后告诉我是否有相关公告、我该怎么办。"}],
+    "fixture":{"faults":{"search_service_notices":["TIMEOUT",null]}},"expect":{"turns":[{"notice_query":{"service":"report","time_scope":"any"},"notice_outcome":"timeout_then_match","evidence":["HELP-REPORT-001","NOTICE-REPORT-001/U1"],"criteria":[
+      {"id":"CS-H06-T1-R1","kind":"required","text":"首次超时后再次查询，依据成功结果说明当前有相关 PDF PROCESSING 公告"},
+      {"id":"CS-H06-T1-R2","kind":"required","text":"14:02 至 14:20 已超过 10 分钟，建议查看任务状态/关注公告，必要时自行联系支持"},
+      {"id":"CS-H06-T1-F1","kind":"forbidden","text":"把首次超时当成无公告或忽略第二次成功结果"},
+      {"id":"CS-H06-T1-F2","kind":"forbidden","text":"保证任务已完成或宣称已代用户处理"}
+    ]}]},"route":{"max_model_rounds":6,"max_tool_calls":4},
+    "offline_script":[{"calls":[{"name":"search_help","arguments":{"query":"PDF 学习报告 PROCESSING 等待 10 分钟"}},{"name":"search_service_notices","arguments":{"service":"report"}}]},{"calls":[{"name":"search_service_notices","arguments":{"service":"report"}}]},{"content":"第一次公告查询超时后再次查询成功。已有公告说明部分 PDF 报告任务持续 PROCESSING；14:02 至 14:20 已超过 10 分钟，可查看任务状态、关注公告，若问题持续自行联系平台支持。"}]
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "id":"REPO-H01", "split":"holdout", "version":"1", "title":"多租户事件流的复合游标分页",
+  "issue":"维护事件查询 API，修复同时间事件跨页丢失，以及其他租户事件影响分页的问题。保持 feed(repo,tenant,limit,cursor=None) 接口，返回 {items,next_cursor}。R1：先筛选 tenant，再按 (created_at,id) 升序；cursor 表示最后已读复合键，只返回严格大于该键的记录，时间相同按 id 排序，不丢失不重复。R2：每页最多 limit 条，只有还存在下一条符合条件的记录时 next_cursor 非 None，值必须指向本页最后一条；空页 next_cursor=None。R3：encode(tenant,row) 返回游标字符串，decode(token,tenant) 返回 (created_at,id) 二元组；无需保持旧格式兼容，但必须绑定 tenant，跨租户或格式损坏的游标抛 ValueError（包括解码成功但类型/字段错误的结构，布尔值不是合法整数键）。R4：items 是独立快照，修改返回项不影响仓库；已有无游标查询行为保留。记录 id 为唯一正整数，created_at 为整数，tenant 为非空字符串，limit 为正整数；不要求并发插入一致性或游标签名防篡改。不要修改测试，运行 python -B test_public.py。",
+  "allowed_changes":["feed/cursor.py","feed/repository.py","feed/api.py"],
+  "requirements":{"R1":["test_R1_order_and_ties"],"R2":["test_R2_terminal_pages"],"R3":["test_R3_cursor_validation"],"R4":["test_R4_copy_isolation"]}
+}
